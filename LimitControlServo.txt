@@ -1,0 +1,34 @@
+#include <Servo.h> // Include the Servo library
+
+// Define the pin for the limit switch
+const int limitSwitchPin = 3; // Digital pin 3 for the limit switch
+
+// Create a Servo object
+Servo gripper;
+
+void setup() {
+  // Set the limit switch pin as an input with an internal pull-up resistor
+  pinMode(limitSwitchPin, INPUT_PULLUP);
+
+  // Attach the servo to pin 2
+  gripper.attach(2);
+
+  // Initialize Serial communication for debugging
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Read the state of the limit switch
+  int switchState = digitalRead(limitSwitchPin);
+
+  // Move the gripper to 70 degrees
+  gripper.write(70);
+
+  if (switchState == HIGH) {
+    // Limit switch is pressed
+    Serial.println("Limit reached! Stopping motor.");
+  } else {
+    // Limit switch not pressed
+    Serial.println("Motor running.");
+  }
+}
