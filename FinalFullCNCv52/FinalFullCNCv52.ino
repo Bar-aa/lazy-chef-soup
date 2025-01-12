@@ -26,7 +26,9 @@
 #define mixtype1 1
 #define mixtype2 2
 
-
+// Define motor pins for Motor 1 (Up-Down Motor 1)
+#define MOTOR1_STEP_PIN  9 // Step pin for Motor 1
+#define MOTOR1_DIR_PIN  8  // Direction pin for Motor 1
 
 // Define constants for spices
 const int spiceTypes[] = {0, 1, 2, 3}; // Salt (0), Pepper (1), Onion (2), Chicken (3)
@@ -39,9 +41,8 @@ const int spiceBoxPositionslower[] = {0,300,1050}; // Horizontal positions
 
 
 
-// Stepper motor objects
-Stepper motorRight(STEPS_PER_REV, 22, 24, 26, 28); // Motor 1 (Right)
-Stepper motorLeft(STEPS_PER_REV, 23, 25, 27, 29);  // Motor 2 (Left)
+const long int TOTAL_STEPS = 50000 ;  // Number of steps to move
+
 
 Stepper stepperRotational(STEPS_PER_REV, 32, 34, 36, 38);
 Stepper stepperTelescopic(STEPS_PER_REV, 33, 35, 37, 39);
@@ -69,9 +70,11 @@ volatile bool ElevatedMotorTriggered = false;
 int itisup=0;
 
 void setup() {
-  // Initialize motor speeds
-  motorRight.setSpeed(20);
-  motorLeft.setSpeed(20);
+
+  // Set motor pins as output
+  pinMode(MOTOR1_STEP_PIN, OUTPUT);
+  pinMode(MOTOR1_DIR_PIN, OUTPUT);
+
   stepperTelescopic.setSpeed(50);
   stepperRotational.setSpeed(20);
   stepperLeftElevated.setSpeed(SPEED_AUX);
@@ -98,53 +101,11 @@ void setup() {
 
 void loop() {
 
-  //if (digitalRead(buttonPin) == LOW) { // Button pressed
-  delay (5000);
-    Serial.println("Button pressed! Starting operation...");
-    delay(DEBOUNCE_DELAY);
-    //performOperation(2, 2, 3); // the second number for the spice type 0 is the first 
-    char input[] = "A13#";  // Format: <Character><Mod><Exclude># 
-    //homeBothMotors();
-    //homeElevated();
-    //handleCharacters(input);
-    mixing(1);
-  //}  
+  delay (5000); 
+  homeBothMotors();
 }
-// Function to handle multiple character inputs
-void handleCharacters(char characters[]) {
-  //homeBothMotors(); // Ensure starting position
-  if (characters[3]=='#'){
-    int mod=characters[1] -'0';
-    int exclude = characters[2] -'0'; 
-    switch (characters[0]) {
-        case 'A':
-          //for (int i = 1; i < 2; i++) {
-            //if (i != 2 && i != exclude) {
-              performOperation(shelfPosition, 1, mod);
-            //}
-          //}
-          break;
-        case 'K':
-          //for (int i = 0; i < 2; i++) {
-            //if (i != exclude) {
-              performOperation(shelfPosition, 2, mod);
-            //}
-          //}
-          break;
-        case 'D':
-        case 'S': 
-          //for (int i = 0; i < 4; i++) {
-            //if (i!= exclude) {
-              performOperation(shelfPosition, 3, mod);
-            //}
-          //}
-          break;
-        default:
-          Serial.println("Invalid character received!");
-          break;
-      }
-  }        
-}
+
+
 
 void performOperation(int shelf, int box, int mode) {
   moveToSpicePosition(shelf, box);
@@ -190,16 +151,21 @@ void moveToSpicePosition(int shelf, int box) {
 
 void homeBothMotors() {
   Serial.println("Homing motors...");
-  rightMotorTriggered = leftMotorTriggered = false;
-  while (!rightMotorTriggered || !leftMotorTriggered  ) {
-    if (!rightMotorTriggered) motorRight.step(5); // CCW
-    if (!leftMotorTriggered) motorLeft.step(5);  // CCW
-    delay(10);
+  leftMotorTriggered = false;
+  int directionPin=MOTOR1_DIR_PIN;
+  int stepPin=MOTOR1_STEP_PIN;
+  while (!leftMotorTriggered) {
+    if (!leftMotorTriggered) {
+      // Move right motor step (CCW for homing)
+      digitalWrite(directionPin, HIGH); // Adjust HIGH/LOW based on wiring
+      digitalWrite(stepPin, HIGH);
+      delayMicroseconds(100);
+      digitalWrite(stepPin, LOW);
+      delayMicroseconds(100);
+    }
+    delay(10); // Optional for debounce
   }
-
-  Serial.println("Motors homed.");
 }
-
 void homeElevated() {
   Serial.println("Homing Elevated...");
   ElevatedMotorTriggered = false;
@@ -211,18 +177,23 @@ void homeElevated() {
 }
 
 
-void moveBothMotors(int steps, bool up) {
+void moveBothMotors(long int steps, bool up) {
   Serial.println(up ? "Moving both motors up..." : "Moving both motors down...");
 
-  int increment = 10; // Small step size for smoother movement
-  int totalSteps = abs(steps);
+  int directionPin=MOTOR1_DIR_PIN;
+  int stepPin=MOTOR1_STEP_PIN;
+  if (up) {
+    digitalWrite(directionPin, LOW); // Up (CW)
+  } else {
+    digitalWrite(directionPin, HIGH); // Down (CCW)
+  }
 
-  for (int i = 0; i < totalSteps; i += increment) {
-    int direction = up ? -1 : 1; // CW for up, CCW for down
-    motorRight.step(direction * increment); // Move right motor
-    motorLeft.step(direction * increment);  // Move left motor
-
-    delay(5); // Short delay to synchronize movement
+  // Perform the steps
+  for (long int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(100); // Adjust delay for speed
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(100);
   }
 }
 
@@ -273,7 +244,7 @@ void moveStepper(Stepper &stepper, int steps) {
   stepper.step(steps > 0 ? -steps : steps); // Negative for CW
 }
 
-bool isValidIndex(int index, const int arr[], int size) {
+bool isValidIndex(int index, const  int arr[], int size) {
     return index >= 0 && index < size;
 }
 
@@ -315,19 +286,18 @@ void mixing(int type){
   moveBothMotors(shelfPositions[4],false );
 
   stepperTelescopic.step(4000);
-  
   for(int i=0;i<2;i++){
-    stepperLeftElevated.step(-300);
-    stepperLeftElevated.step(600);
-    stepperLeftElevated.step(-600);
-    stepperLeftElevated.step(300);
-    stepperLeftElevated.step(-300);
-    stepperLeftElevated.step(600);
-    stepperLeftElevated.step(-600);
-    stepperLeftElevated.step(300);
-    stepperTelescopic.step(3000);
-    stepperTelescopic.step(-6000);
-    stepperTelescopic.step(3000);
+     stepperLeftElevated.step(-300);
+     stepperLeftElevated.step(600);
+     stepperLeftElevated.step(-600);
+     stepperLeftElevated.step(300);
+     stepperLeftElevated.step(-300);
+     stepperLeftElevated.step(600);
+     stepperLeftElevated.step(-600);
+     stepperLeftElevated.step(300);
+     stepperTelescopic.step(3000);
+     stepperTelescopic.step(-6000);
+     stepperTelescopic.step(3000);
   }
   returnMixing(type);
 }

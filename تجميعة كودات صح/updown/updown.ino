@@ -10,7 +10,7 @@ const int spice_box_positions_upper[] = {0, 300, 650, 1050}; // Positions on upp
 
 // Initialize the stepper library for two motors
 Stepper motorRight(stepsPerRevolution, 22, 24, 26, 28); // Motor 1 (Right) pins
-Stepper motorLeft(stepsPerRevolution, 23, 25,27 , 29);  // Motor 2 (Left) pins
+Stepper motorLeft(stepsPerRevolution, 23, 25, 27, 29);  // Motor 2 (Left) pins
 
 // Limit switch pins
 const int limitSwitchRight = 2; // Interrupt-capable pin for Motor 1 (Right)
@@ -24,8 +24,8 @@ volatile bool elevatedMotorTriggered = false;
 
 void setup() {
   // Set speed for both motors
-  motorRight.setSpeed(100); // Set Motor 1 (Right) speed in RPM
-  motorLeft.setSpeed(100);  // Set Motor 2 (Left) speed in RPM
+  motorRight.setSpeed(20); // Set Motor 1 (Right) speed in RPM
+  motorLeft.setSpeed(20);  // Set Motor 2 (Left) speed in RPM
  
   // Set limit switches as input with pull-up resistors
   pinMode(limitSwitchRight, INPUT_PULLUP);
@@ -48,13 +48,16 @@ void loop() {
 
   // Example loop logic: Move both motors after homing
   homeBothMotors();
-  delay(500);
-  moveTogether(secondShelf, true); // Move up 200 steps
-  delay(500);
-  homeBothMotors();
-  delay(500);
-  moveTogether(firstShel, true); // Move up 200 steps
-  delay(500);
+  motorRight.step(-500);
+  motorLeft.step(-500);
+  // delay(500);
+  // moveTogether(secondShelf, true); // Move up 200 steps
+  // moveTogether(secondShelf, false); // Move up 200 steps
+  // delay(500);
+  // //homeBothMotors();
+  // delay(500);
+  // moveTogether(firstShel, true); // Move up 200 steps
+  // delay(500);
 }
 
 // Function to move both motors to their home positions
