@@ -1,6 +1,6 @@
 // Define motor pins for Motor 1 (Up-Down Motor 1)
-const int MOTOR1_STEP_PIN = 11; // Step pin for Motor 1
-const int MOTOR1_DIR_PIN = 10;  // Direction pin for Motor 1
+const int MOTOR1_STEP_PIN = 13; // Step pin for Motor 1
+const int MOTOR1_DIR_PIN = 12;  // Direction pin for Motor 1
 const long int TOTAL_STEPS = 50000;  // Number of steps to move
 
 const int limitSwitchLeft = 3; // Pin for the limit switch
@@ -21,14 +21,10 @@ void moveStepper( long int steps, bool isUp) {
   } else {
     digitalWrite(directionPin, HIGH); // Down (CCW)
     for (long int i = 0; i < steps; i++) {
-      if (digitalRead(limitSwitchLeft) == LOW) { // Check if limit switch is triggered
-        Serial.println("Limit switch triggered, stopping motor.");
-        return; // Stop motor movement
-      }
       digitalWrite(stepPin, HIGH);
-      delayMicroseconds(50); // Adjust delay for speed
+      delayMicroseconds(100); // Adjust delay for speed
       digitalWrite(stepPin, LOW);
-      delayMicroseconds(50); // Adjust delay for speed
+      delayMicroseconds(100); // Adjust delay for speed
     }
   }  
 }
@@ -50,7 +46,7 @@ void loop() {
     // Move motor up
   delay(5000);
   Serial.println("Moving motor up...");
-  moveStepper(120000, true);
+  moveStepper(22600, false);
   Serial.println("Moving motor down...");
-  moveStepper(120000, false);
+  moveStepper(22600, true);
 }

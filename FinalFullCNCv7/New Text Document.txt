@@ -7,8 +7,8 @@
 
 // Servo angles
 #define GRIPPER_OPEN_ANGLE 70
-#define GRIPPER_CLOSE_ANGLE 45
-#define LeftGround 22500
+#define GRIPPER_CLOSE_ANGLE 50
+#define LeftGround 1390
 
 // Delays
 #define ACTION_DELAY 1000
@@ -29,12 +29,9 @@
 const int Telescopic_STEP_PIN = 11; // Step pin for Motor 1
 const int Telescopic_DIR_PIN = 10;  // Direction pin for Motor 1
 
-// Define motor pins for Telescopic Motor 
-const int Ground_STEP_PIN = 13; // Step pin for Motor 1
-const int Ground_DIR_PIN = 12;  // Direction pin for Motor 1
-
 Stepper stepperRotational(STEPS_PER_REV, 32, 34, 36, 38);
 Stepper stepperLeftElevated(STEPS_PER_REV, 42, 44, 46, 48);
+Stepper stepperLeftGround(STEPS_PER_REV, 43, 45, 47, 49);
 
 // Limit switch pins
 const int limitSwitchRight = 2;
@@ -61,8 +58,8 @@ const int centerBoxPositionsUpper[] = {-600, -250, 100, 550}; // center Horizont
 
 // Define constants for mixing
 const int mixingTypes[] = {0, 1}; // sponn (0), mixer (1)
-const int spiceBoxPositionslower[] = {200,1050}; // Horizontal positions
-const int centerBoxPositionslower[] = {-590,550}; // Horizontal positions
+const int spiceBoxPositionslower[] = {60,1050}; // Horizontal positions
+const int centerBoxPositionslower[] = {-250,550}; // Horizontal positions
 
 
 // Define a structure to represent each soup
@@ -93,13 +90,10 @@ void setup() {
   pinMode(Telescopic_DIR_PIN, OUTPUT);
   pinMode(Telescopic_STEP_PIN, OUTPUT);
 
-  // Set motor pins as output
-  pinMode(Ground_DIR_PIN, OUTPUT);
-  pinMode(Ground_STEP_PIN, OUTPUT);
-
   // Initialize motor speeds
   stepperRotational.setSpeed(25);
   stepperLeftElevated.setSpeed(MAX_SPEED);
+  stepperLeftGround.setSpeed(MAX_SPEED);
 
   // Attach servo motor
   gripper.attach(7);
@@ -110,7 +104,9 @@ void setup() {
   pinMode(limitSwitchElevated,INPUT_PULLUP);
 
  
- 
+  // // Attach interrupts to limit switches
+  attachInterrupt(digitalPinToInterrupt(limitSwitchRight), rightSwitchISR, FALLING);
+
   // Initialize serial communication for debugging
   Serial.begin(9600);
 }
@@ -119,7 +115,6 @@ void loop() {
   delay (5000);
   char serial_input[5]="029#";
   handleCharacters(serial_input);
-  //moveGround(22600, false);
 }
 
 // Function to handle multiple character inputs
@@ -140,8 +135,6 @@ void handleCharacters(char characters[]) {
 void performOperation(int selectedSoup, int mode, int exclude){
   const Soup& soup = soups[selectedSoup]; 
   putSpicesIntoSoup(soup, mode, exclude);
-  homeBothMotors();
-  homeElevated();
   mixSteps(soup);
 }
 void putSpicesIntoSoup(const Soup& selectedSoup,int mode, int exclude) {
@@ -159,6 +152,8 @@ void putSpicesIntoSoup(const Soup& selectedSoup,int mode, int exclude) {
   }
 }
 void moveToSpicePosition(long int shelf, int box) {
+  Serial.println(shelf);
+  Serial.println(box);
   moveBothMotors(shelf,true);
   stepperLeftElevated.step(-box);
   Serial.println("Spice position reached.");
@@ -224,7 +219,7 @@ void startgripperingSequence(bool isTakingBox) {
 void centerLeftElevated(int box , bool isUpper ) {
   if(isUpper)stepperLeftElevated.step(centerBoxPositionsUpper[box]);
   else stepperLeftElevated.step(centerBoxPositionslower[box]);
-  moveGround(LeftGround,false);
+  stepperLeftGround.step(-LeftGround);
 }
 void gripperAction(int mode) {
   Serial.println("const int steps = 230;");
@@ -241,11 +236,13 @@ void gripperAction(int mode) {
     stepperRotational.step(-steps);   // Move backward
     delay(delayTimes[mode - 1]);
   }
-  Serial.println("Gripper action complete.");  
+  Serial.println("Gripper action complete.");
+  
 }
+
 void returnBox(int box){ 
   stepperLeftElevated.step(-centerBoxPositionsUpper[box]);
-  moveGround(LeftGround,true); // Adjust ground motor
+  stepperLeftGround.step(LeftGround); // Adjust ground motor
   moveBothMotors(6000, true);
   startgripperingSequence(false);
   homeElevated();
@@ -273,7 +270,7 @@ void homeElevated() {
   int flag =1;
   while (flag) {
     if (digitalRead(limitSwitchElevated) == LOW){
-      flag=0;
+      ElevatedMotorTriggered = false;
       return;
     }  
     stepperLeftElevated.step(5);
@@ -305,30 +302,6 @@ void moveTelescopic( long int steps, bool isForward) {
     }
   }  
 }
-
-void moveGround( long int steps, bool isleft ){
-  int directionPin =Ground_DIR_PIN;
-  int stepPin = Ground_STEP_PIN;
-  // Set the direction based on isUp parameter
-  if (isleft) {
-    digitalWrite(directionPin, LOW); 
-    for (long int i = 0; i < steps; i++) {
-      digitalWrite(stepPin, HIGH);
-      delayMicroseconds(100); // Adjust delay for speed
-      digitalWrite(stepPin, LOW);
-      delayMicroseconds(100);
-    }
-  } else {
-      digitalWrite(directionPin, HIGH);
-      for (long int i = 0; i < steps; i++) {
-      digitalWrite(stepPin, HIGH);
-      delayMicroseconds(100); // Adjust delay for speed
-      digitalWrite(stepPin, LOW);
-      delayMicroseconds(100);
-    }
-  }  
-}
-
 void mixSteps(const Soup& selectedSoup){
   long int  shelf = shelfPositions[0]; 
   int box = spiceBoxPositionslower[selectedSoup.mixingTool];
@@ -336,7 +309,8 @@ void mixSteps(const Soup& selectedSoup){
   startgripperingSequence(true);
   moveBothMotors(170000,true);
   centerLeftElevated(selectedSoup.mixingTool,false);
-  moveBothMotors(114000,false);
+  
+  moveBothMotors(112000,false);
   moveTelescopic(140000,true);
   mixing(selectedSoup.mixingTool);
   returnMixing(selectedSoup.mixingTool);
@@ -362,8 +336,10 @@ void returnMixing(int box){
   moveBothMotors(112000,true);  
   moveTelescopic(140000,false);
   stepperLeftElevated.step(-centerBoxPositionslower[box]);
-  moveGround(LeftGround,true); // Adjust ground motor
-  moveBothMotors(164000,false);
+  stepperLeftGround.step(LeftGround); // Adjust ground motor
+  moveBothMotors(170000,false);
   startgripperingSequence(false);
 }
+void rightSwitchISR() { rightMotorTriggered = true;Serial.println("DOOONNEER"); }
+
 
