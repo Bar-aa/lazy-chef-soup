@@ -1,5 +1,10 @@
 #include <Stepper.h>
 #include <Servo.h>
+#include <Wire.h>
+#include <RTClib.h>
+
+RTC_DS3231 rtc;
+String TimeBuffer = ""; // To hold serial input
 
 // Define steps per revolution for the motors
 #define STEPS_PER_REV 200
@@ -77,6 +82,8 @@ const int ADASSpices[] = {2};  // Salt, Chicken
 const int KHODARSpices[] = {0, 1, 2};  // Salt, Pepper, Onion
 const int SHERASpices[] = {1};  // Pepper
 
+int year, month, day, hour, minute, second;
+
 // Define soups
 const Soup soups[] = {
   {ADASSpices, 1, 0},  // Soup 1 (Spoon)
@@ -115,18 +122,55 @@ void setup() {
  
   // Initialize serial communication for debugging
   Serial.begin(9600);
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find RTC. Check your connections.");
+    while (1);
+  }
+
+  if (rtc.lostPower()) {
+    Serial.println("RTC lost power, setting the default time!");
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Set to compile time
+  }
+
+  Serial.println("Send time in format: YYYY/MM/DD HH:MM:SS");
 }
 
 void loop() {
   if (Serial.available() >0) {  // Check if at least 4 bytes of data are available
     Serial.readBytes(serial_input, 4);  // Read 4 bytes of serial data and store in the array
     serial_input[4] = '\0';  // Add null terminator to make it a proper string
-    Serial.println(serial_input);  // Print the data on Serial Monitor
-    handleCharacters(serial_input);   
+    Serial.println(serial_input);  // Print the data on Serial Monitor   
   }
-   
-
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n') { // End of input
+      processInput(TimeBuffer); // Process the time input
+      TimeBuffer = ""; // Clear the buffer
+    } else {
+      TimeBuffer += c; // Append to buffer
+    }
+  }
+  
+  Serial.println(serial_input);
+  Serial.println(TimeBuffer);
   delay(100);  // Optional small delay for stability
+  DateTime now = rtc.now();
+  static bool isHandled = false; // To avoid multiple calls
+  if (!isHandled && TimeBuffer != "") {
+    if (now.hour() == hour && now.minute() == minute && now.second() == second) {
+      handleCharacters(serial_input); // Call the handleCharacters function
+      isHandled = true; // Mark as handled
+    }
+  }
+}
+
+void processInput(String input) {
+  // Parse the input string
+  if (sscanf(input.c_str(), "%d:%d", &hour, &minute) == 2) {
+    Serial.println("Time input parsed successfully.");
+  } else {
+    Serial.println("Invalid format. Use: HH:MM");
+  }
 }
 
 // Function to handle multiple character inputs

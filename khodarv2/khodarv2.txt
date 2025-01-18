@@ -1,17 +1,14 @@
 #include <Keypad.h>
-#include <Stepper.h>  // Add this line for the Stepper library
 
 // Constants for stepper motors
 #define directionPinShera 22
 #define stepPinShera 23
 #define directionPinKhodar 24
 #define stepPinKhodar 25
-//#define directionPinAdas 26
-//#define stepPinAdas 27
-#define STEPS_PER_REV 200
-const int stepsPerRevolution = 6400;
+#define directionPinAdas 26
+#define stepPinAdas 27
 
-// Initialize the Stepper library on pins 8, 9, 10, and 11
+const int stepsPerRevolution = 6400;
 
 // Constants for ultrasonic sensors
 #define trig1 30
@@ -60,10 +57,7 @@ void executeMotor(char motorKey, int steps);
 void controlWaterPump(int peopleCount);
 void controlHeater(char soupType);
 void checkTemperature();
-int Calcnema23(char key);
-// Initialize stepper motor for Adas
-Stepper stepperAdas(STEPS_PER_REV, 41,40,39,38);
-Stepper stepperkhodar(STEPS_PER_REV, 31,29,27,25);
+
 // Measure distance using ultrasonic sensor
 long measureDistance(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
@@ -82,20 +76,13 @@ void moveStepper(int directionPin, int stepPin, int steps) {
   digitalWrite(directionPin, HIGH);
   for (int i = 0; i < steps; i++) {
     digitalWrite(stepPin, HIGH);
+
     delayMicroseconds(100);
     digitalWrite(stepPin, LOW);
     delayMicroseconds(100);
   }
 }
-int Calcnema23(char key) {
-  if (key == '3') return STEPS_PER_REV / 5; // Steps for people 1–2
-  if (key == '6') return STEPS_PER_REV / 3; // Steps for people 3–4
-  if (key == '9') return STEPS_PER_REV / 2; // Steps for people 5–7
-  return 0; // Return 0 if no matching condition
-}
 
-
- 
 // Execute motor operation with distance measurement
 void executeMotor(char motorKey, int steps) {
   int trigPin = 0, echoPin = 0;
@@ -119,13 +106,8 @@ void executeMotor(char motorKey, int steps) {
   Serial.print(distanceBefore);
   Serial.println(" cm");
 
-  if (motorKey == 'A') {
-    stepperAdas.step(steps); // Call the step function for motor A
-  } else if (motorKey == 'C') {
-    moveStepper(directionPinKhodar, stepPinKhodar, steps); // Call the step function for motor B
-  } else if (motorKey == 'B') {
-    stepperkhodar.step(steps); // Call the step function for motor C
-  }
+  moveStepper((motorKey == 'A' ? directionPinAdas : motorKey == 'B' ? directionPinKhodar : directionPinShera),
+              (motorKey == 'A' ? stepPinAdas : motorKey == 'B' ? stepPinKhodar : stepPinShera), steps);
 
   long distanceAfter = measureDistance(trigPin, echoPin);
   Serial.print("Distance after: ");
@@ -136,7 +118,7 @@ void executeMotor(char motorKey, int steps) {
     Serial.println("Warning: Container might be empty!");
   }
 
-  // Control the water pump based on the number of people
+  // Control the water pump based on number of people
   delay(6000);
 }
 
@@ -168,25 +150,26 @@ void controlWaterPump(char peopleCount) {
   digitalWrite(valvePin, LOW);  // Turn on the water pump
   if (peopleCount == '3') {
     pumpTime = 3 * 1000; // 9 seconds for 9 people
-    delay(4000); //3000
+    delay(3000);
   } else if (peopleCount == '6') {
     pumpTime = 6 * 1000; // 6 seconds for 6 people
-    delay(7000);//6000
+    delay(6000);
   } else if (peopleCount == '9') {
     pumpTime = 9 * 1000; // 9 seconds for 9 people
-    delay(10000);//9000
+    delay(9000);
   }
   digitalWrite(valvePin, HIGH); // Turn off the water pump
   Serial.println("Water pump is OFF.");
   Serial.println(" controlWaterPump Done");
   delay(6000);
+  
 }
 
 // Control the heater based on the soup type
 void controlHeater(char soupType) {
   digitalWrite(GazePin, LOW); // Turn on the heater
   if (soupType == 'A') {
-    delay(2100000);
+    delay(60000);
   } else if (soupType == 'B') {
     delay(120000);
   } else if (soupType == 'C') {
@@ -210,15 +193,14 @@ void checkTemperature() {
 // Setup function
 void setup() {
   Serial.begin(9600);
-  stepperAdas.setSpeed(20); 
-  stepperkhodar.setSpeed(20);
+
   // Set motor pins as outputs
   pinMode(directionPinShera, OUTPUT);
   pinMode(stepPinShera, OUTPUT);
   pinMode(directionPinKhodar, OUTPUT);
   pinMode(stepPinKhodar, OUTPUT);
-  // pinMode(directionPinAdas, OUTPUT);
-  // pinMode(stepPinAdas, OUTPUT);
+  pinMode(directionPinAdas, OUTPUT);
+  pinMode(stepPinAdas, OUTPUT);
 
   // Set ultrasonic sensor pins
   pinMode(trig1, OUTPUT);
@@ -253,26 +235,19 @@ void loop() {
     Serial.println(key);
 
     storeKeyPress(key); // Store the key in the buffer
-    if ((keyPressCount == 4 || keyPressCount == 3) && (keyPresses[3] == '#' || keyPresses[2] == '#')) {
+    if ((keyPressCount == 4||keyPressCount == 3 )&& (keyPresses[3] == '#'||keyPresses[2] == '#')) {
       char soupType = keyPresses[0];
       char peopleCount = keyPresses[1];
       int steps = calculateSteps(peopleCount);
-    int stepsmotor32 = Calcnema23(peopleCount);
+
       Serial.print("Steps to move: ");
       Serial.println(steps);
-      if (soupType=='C'){
+
       executeMotor(soupType, steps); // Execute motor operation
-      }
-      else 
-      {
-      executeMotor(soupType, stepsmotor32);
-      }
-     controlWaterPump(keyPresses[1]);
-     controlHeater(soupType);       // Control the heater based on soup type
+      controlWaterPump(keyPresses[1]);
+      controlHeater(soupType);       // Control the heater based on soup type
       keyPressCount = 0; // Reset the buffer
     }
   }
 
 }
-
-

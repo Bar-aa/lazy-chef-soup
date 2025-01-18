@@ -7,8 +7,8 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {  // Check if data is available
     Serial.readBytes(Mymessage, 4);  // Read 1 byte of serial data and store in the variable
-    Mymessage[5] = '\0';  // Add null terminator to make it a proper string
+    Mymessage[4] = '\0';  // Add null terminator to make it a proper string
     Serial.println(Mymessage);  // Print data on Serial Monitor
   }
   delay(100);  // Optional small delay for stability
-}
+} 
