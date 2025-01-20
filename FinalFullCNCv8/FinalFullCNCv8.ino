@@ -38,7 +38,7 @@ const int Telescopic_DIR_PIN = 10;  // Direction pin for Motor 1
 const int Ground_STEP_PIN = 13; // Step pin for Motor 1
 const int Ground_DIR_PIN = 12;  // Direction pin for Motor 1
 
-Stepper stepperRotational(STEPS_PER_REV, 32, 34, 36, 38);
+Stepper stepperRotational(STEPS_PER_REV,49,47,45,43 );
 Stepper stepperLeftElevated(STEPS_PER_REV, 42, 44, 46, 48);
 
 // Limit switch pins
@@ -122,33 +122,14 @@ void setup() {
  
   // Initialize serial communication for debugging
   Serial.begin(9600);
-  if (!rtc.begin()) {
-    Serial.println("Couldn't find RTC. Check your connections.");
-    while (1);
-  }
-
-  if (rtc.lostPower()) {
-    Serial.println("RTC lost power, setting the default time!");
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Set to compile time
-  }
-
-  Serial.println("Send time in format: YYYY/MM/DD HH:MM:SS");
+  
 }
 
 void loop() {
-  if (Serial.available() >0) {  // Check if at least 4 bytes of data are available
+ if (Serial.available() >0) {  // Check if at least 4 bytes of data are available
     Serial.readBytes(serial_input, 4);  // Read 4 bytes of serial data and store in the array
     serial_input[4] = '\0';  // Add null terminator to make it a proper string
     Serial.println(serial_input);  // Print the data on Serial Monitor   
-  }
-  while (Serial.available()) {
-    char c = Serial.read();
-    if (c == '\n') { // End of input
-      processInput(TimeBuffer); // Process the time input
-      TimeBuffer = ""; // Clear the buffer
-    } else {
-      TimeBuffer += c; // Append to buffer
-    }
   }
   
   Serial.println(serial_input);

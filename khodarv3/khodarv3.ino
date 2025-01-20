@@ -1,5 +1,10 @@
 #include <Keypad.h>
 #include <Stepper.h> 
+#include <Wire.h>
+#include <RTClib.h>
+
+RTC_DS3231 rtc;
+
 
 #define STEPS_PER_REV 200
 const int stepsPerRevolution = 6400;
@@ -35,7 +40,12 @@ byte colPins[COLS] = {9, 8, 7, 6};
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 char message[] = "0000";
+char arduino1[] = "0000";
+String TimeBuffer = ""; // To hold serial input
+String cnc="";
 int keyPressCount=0;
+int year, month, day, hour, minute, second;
+static bool isHandled =true;
 
 long measureDistance(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
@@ -64,6 +74,14 @@ int Calcnema23(char key) {
   return 0;
 }
 
+// Calculate steps based on people count
+int calculateSteps(char key) {
+  if (key == '3') return stepsPerRevolution / 5; 
+  if (key == '6') return stepsPerRevolution / 3; 
+  if (key == '9') return stepsPerRevolution / 2; 
+  return 0;
+}
+
 void executeMotor(char motorKey, int steps) {
   int trigPin = 0, echoPin = 0;
 
@@ -85,28 +103,20 @@ void executeMotor(char motorKey, int steps) {
   } else if (motorKey == 'B') {
     stepperShera.step(steps); 
   }
-
   long distanceAfter = measureDistance(trigPin, echoPin);
-  if (distanceAfter < threshold) {
-  }
-
+ 
   delay(6000);
 }
 
 void storeKeyPress(char key) {
   if (keyPressCount < 4) {  
     message[keyPressCount] = key;
+    arduino1[keyPressCount]=key;
     keyPressCount++;
   }
 }
 
-// Calculate steps based on people count
-int calculateSteps(char key) {
-  if (key == '3') return stepsPerRevolution / 5; 
-  if (key == '6') return stepsPerRevolution / 3; 
-  if (key == '9') return stepsPerRevolution / 2; 
-  return 0;
-}
+
 
 void controlWaterPump(char peopleCount) {
   int pumpTime = 0;
@@ -140,6 +150,7 @@ void controlHeater(char soupType) {
 
 void setup() {
   Serial.begin(9600);
+  Serial1.begin(9600);
   stepperAdas.setSpeed(20); 
   stepperShera.setSpeed(20);
   pinMode(directionPinKhodar, OUTPUT);
@@ -156,11 +167,22 @@ void setup() {
   digitalWrite(GazePin, HIGH);
   digitalWrite(valvePin, HIGH); 
   digitalWrite(temperatureSensor, HIGH); 
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find RTC. Check your connections.");
+    while (1);
+  }
+
+  if (rtc.lostPower()) {
+    Serial.println("RTC lost power, setting the default time!");
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Set to compile time
+  }
+
+  Serial.println("Send time in format: YYYY/MM/DD HH:MM:SS");
 }
 
 void sendKeyPresses() {
-  if ((keyPressCount==3&&message[2]=='#')||(keyPressCount==4&&message[3]=='#')){
-    for (int i = 0; i < keyPressCount; i++){
+  //if ((keyPressCount==3&&message[2]=='#')||(keyPressCount==4&&message[3]=='#')){
+    for (int i = 0; i < 4; i++){
       char key = message[i];
       // Map specific keys to values
       if (i==0){
@@ -185,14 +207,14 @@ void sendKeyPresses() {
         message[i+1]= '#';
       }
     }
-  }
+  //}
   message[4]= '\0';
 }
 
 // Function to handle multiple character inputs
 void handleCharacters(char characters[]) {
   if (strlen(characters) < 4 || characters[3] != '#') {
-    Serial.println("Invalid input format.");
+    //Serial.println("Invalid input format.");
     return;
   }
   if (characters[3]=='#'){
@@ -207,19 +229,43 @@ void handleCharacters(char characters[]) {
     controlHeater(soupType);
   }        
 }
-
+void processInput(String input) {
+  // Parse the input string
+  if (sscanf(input.c_str(), "%d:%d", &hour, &minute) == 2) {
+    Serial.println("Time input parsed successfully.");
+  } else {
+    Serial.println("Invalid format. Use: HH:MM");
+  }
+}
 void loop() {
+  //Serial.println("HII");
   char key = keypad.getKey();
   if (key) {
     storeKeyPress(key); 
     if (key=='#'){
       sendKeyPresses();
       keyPressCount=0;
-      handleCharacters(message);
-      
+      handleCharacters(arduino1);
     }
   }
-  
+  if (Serial1.available() > 0) {
+    String input = Serial1.readStringUntil('\n'); // Read input as String
+    input.trim(); // Remove leading/trailing whitespace
+    cnc=input.substring(0, 4);
+    TimeBuffer = input.substring(4);
+    cnc.toCharArray(message, sizeof(message));
+    processInput(TimeBuffer); // Process the time input
+    sendKeyPresses(); 
+    isHandled = false; // To avoid multiple calls
+  }  
+  DateTime now = rtc.now();
+  if (!isHandled && TimeBuffer != "") {
+      if (now.hour() == hour && now.minute() == minute) {
+        handleCharacters(message);
+        Serial.print("YEEES");
+        isHandled = true; 
+      }
+    }
 }
 
 
