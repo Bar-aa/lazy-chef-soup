@@ -1,10 +1,8 @@
 #include <Stepper.h>
 #include <Servo.h>
 #include <Wire.h>
-#include <RTClib.h>
 
-RTC_DS3231 rtc;
-String TimeBuffer = ""; // To hold serial input
+
 
 // Define steps per revolution for the motors
 #define STEPS_PER_REV 200
@@ -80,7 +78,7 @@ struct Soup {
 // Spice arrays for specific soups
 const int ADASSpices[] = {2};  // Salt, Chicken
 const int KHODARSpices[] = {0, 1, 2};  // Salt, Pepper, Onion
-const int SHERASpices[] = {1};  // Pepper
+const int SHERASpices[] = {1,2};  // Pepper
 
 int year, month, day, hour, minute, second;
 
@@ -118,41 +116,21 @@ void setup() {
   pinMode(limitSwitchLeft, INPUT_PULLUP);
   pinMode(limitSwitchElevated,INPUT_PULLUP);
 
- 
- 
   // Initialize serial communication for debugging
   Serial.begin(9600);
   
 }
 
-void loop() {
- if (Serial.available() >0) {  // Check if at least 4 bytes of data are available
+void loop() {  
+  if (Serial.available() >0) {  // Check if at least 4 bytes of data are available
     Serial.readBytes(serial_input, 4);  // Read 4 bytes of serial data and store in the array
     serial_input[4] = '\0';  // Add null terminator to make it a proper string
-    Serial.println(serial_input);  // Print the data on Serial Monitor   
+    Serial.println(serial_input);  // Print the data on Serial Monitor 
+    handleCharacters(serial_input);  
   }
-  
-  Serial.println(serial_input);
-  Serial.println(TimeBuffer);
-  delay(100);  // Optional small delay for stability
-  DateTime now = rtc.now();
-  static bool isHandled = false; // To avoid multiple calls
-  if (!isHandled && TimeBuffer != "") {
-    if (now.hour() == hour && now.minute() == minute && now.second() == second) {
-      handleCharacters(serial_input); // Call the handleCharacters function
-      isHandled = true; // Mark as handled
-    }
-  }
+
 }
 
-void processInput(String input) {
-  // Parse the input string
-  if (sscanf(input.c_str(), "%d:%d", &hour, &minute) == 2) {
-    Serial.println("Time input parsed successfully.");
-  } else {
-    Serial.println("Invalid format. Use: HH:MM");
-  }
-}
 
 // Function to handle multiple character inputs
 void handleCharacters(char characters[]) {
@@ -368,7 +346,8 @@ void mixSteps(const Soup& selectedSoup){
   startgripperingSequence(true);
   moveBothMotors(170000,true);
   centerLeftElevated(selectedSoup.mixingTool,false);
-  moveBothMotors(114000,false);
+  moveBothMotors(120000,false);
+  //moveBothMotors(6000,false);
   moveTelescopic(140000,true);
   mixing(selectedSoup.mixingTool);
   returnMixing(selectedSoup.mixingTool);
@@ -391,7 +370,8 @@ void mixing(int type){
   }
 }
 void returnMixing(int box){
-  moveBothMotors(112000,true);  
+  moveBothMotors(118000,true);  
+  //moveBothMotors(6000,true);
   moveTelescopic(140000,false);
   stepperLeftElevated.step(-centerBoxPositionslower[box]);
   moveGround(LeftGround,true); // Adjust ground motor
