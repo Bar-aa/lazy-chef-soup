@@ -54,7 +54,7 @@ volatile bool leftMotorTriggered = false;
 volatile bool ElevatedMotorTriggered = false;
 
 // Positions for shelves and spice boxes
-const int long shelfPositions[] = {20000, 130000}; // Vertical positions
+const int long shelfPositions[] = {20000, 130000,0}; // Vertical positions
 
 // Define constants for spices
 const int spiceTypes[] = {0, 1, 2, 3}; // Salt (0), Pepper (1), Onion (2), Chicken (3)
@@ -76,17 +76,17 @@ struct Soup {
 };
 
 // Spice arrays for specific soups
-const int ADASSpices[] = {2};  // Salt, Chicken
-const int KHODARSpices[] = {0, 1, 2};  // Salt, Pepper, Onion
-const int SHERASpices[] = {1,2};  // Pepper
+const int ADASSpices[] = {2,3};  // Salt, Chicken
+const int KHODARSpices[] = {2,3};  // Salt, Pepper, Onion
+const int SHERASpices[] = {2,3};  // Pepper
 
 int year, month, day, hour, minute, second;
 
 // Define soups
 const Soup soups[] = {
-  {ADASSpices, 1, 0},  // Soup 1 (Spoon)
-  {KHODARSpices, 3, 1},  // Soup 2 (Mixer)
-  {SHERASpices, 1, 0}  // Soup 3 (Spoon)
+  {ADASSpices, 2, 0},  // Soup 1 (Spoon)
+  {KHODARSpices, 2, 1},  // Soup 2 (Mixer)
+  {SHERASpices, 2, 0}  // Soup 3 (Spoon)
 };
 
 char serial_input[5]; // Array to store 4 characters plus a null terminator
@@ -122,6 +122,8 @@ void setup() {
 }
 
 void loop() {  
+  homeBothMotors();
+  homeElevated();
   if (Serial.available() >0) {  // Check if at least 4 bytes of data are available
     Serial.readBytes(serial_input, 4);  // Read 4 bytes of serial data and store in the array
     serial_input[4] = '\0';  // Add null terminator to make it a proper string
@@ -158,8 +160,8 @@ void putSpicesIntoSoup(const Soup& selectedSoup,int mode, int exclude) {
   // Loop through each spice required for the soup
   for (int i = 0; i < selectedSoup.spiceCount; i++) {
     int spiceType = selectedSoup.requiredSpices[i];
-    long int  shelf = shelfPositions[1]; 
     int box = spiceBoxPositionsUpper[spiceType];
+    shelf = (i == 0) ? shelfPositions[1] : shelfPositions[2]; 
     moveToSpicePosition(shelf, box);
     startgripperingSequence(true);
     centerLeftElevated(spiceType,true);
@@ -347,7 +349,7 @@ void mixSteps(const Soup& selectedSoup){
   moveBothMotors(170000,true);
   centerLeftElevated(selectedSoup.mixingTool,false);
   moveBothMotors(120000,false);
-  //moveBothMotors(6000,false);
+  moveBothMotors(6000,false);
   moveTelescopic(140000,true);
   mixing(selectedSoup.mixingTool);
   returnMixing(selectedSoup.mixingTool);
@@ -371,11 +373,10 @@ void mixing(int type){
 }
 void returnMixing(int box){
   moveBothMotors(118000,true);  
-  //moveBothMotors(6000,true);
+  moveBothMotors(6000,true);
   moveTelescopic(140000,false);
   stepperLeftElevated.step(-centerBoxPositionslower[box]);
   moveGround(LeftGround,true); // Adjust ground motor
   moveBothMotors(164000,false);
   startgripperingSequence(false);
 }
-

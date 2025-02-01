@@ -5,7 +5,7 @@
 
 
 // Initialize the Stepper library on pins 8, 9, 10, and 11
-Stepper stepper(STEPS_PER_REV, 8,9,10,11);
+Stepper stepper(STEPS_PER_REV,49,47,45,43); 
 
 void setup() {
   // Set the speed of the stepper motor (in RPM)
@@ -15,10 +15,10 @@ void setup() {
 void loop() {
   delay (3000);
   // Step forward
-  stepper.step(-500);
+  stepper.step(-5000);
   // Move one revolution forward
   delay(1000); 
-  stepper.step(500);
+  stepper.step(5000);
   // Move one revolution forward
   delay(1000);                 // Wait for a second
 

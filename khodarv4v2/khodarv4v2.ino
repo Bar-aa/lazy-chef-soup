@@ -2,9 +2,8 @@
 #include <Stepper.h> 
 #include <Wire.h>
 #include <RTClib.h>
-
+#include <string.h> // Required for strcpy
 RTC_DS3231 rtc;
-
 
 #define STEPS_PER_REV 200
 const int stepsPerRevolution = 6400;
@@ -15,16 +14,18 @@ const int stepsPerRevolution = 6400;
 Stepper stepperAdas(STEPS_PER_REV, 41,40,39,38);
 Stepper stepperShera(STEPS_PER_REV, 31,29,27,25);
 
-#define trig1 30
-#define echo1 31
-#define trig2 32
-#define echo2 33
-#define trig3 34
-#define echo3 35
+#define trig1 17
+#define echo1 16
+#define trig2 49
+#define echo2 51
+#define trig3 47
+#define echo3 45
+
+
 
 const long threshold = 10; 
-const int valvePin = 20;
-const int GazePin = 21;
+#define valvePin 53
+#define GazePin  52
 const int temperatureSensor = 19;
 
 const byte ROWS = 4;
@@ -46,6 +47,18 @@ String cnc="";
 int keyPressCount=0;
 int year, month, day, hour, minute, second;
 static bool isHandled =true;
+
+int redPin = A10;
+int greenPin = A9;
+int bluePin = A8;
+
+// Function to set RGB LED color
+void setRGBColor(int redVal, int greenVal, int blueVal) {
+  // Invert values because it's a common anode RGB LED
+  analogWrite(redPin, redVal);    // Set red intensity (inverted)
+  analogWrite(greenPin, greenVal); // Set green intensity (inverted)
+  analogWrite(bluePin, blueVal);   // Set blue intensity (inverted)
+}
 
 long measureDistance(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
@@ -92,7 +105,6 @@ void executeMotor(char motorKey, int steps) {
   } else if (motorKey == 'C') {
     trigPin = trig3; echoPin = echo3;
   } else {
-    
     return;
   }
 
@@ -150,6 +162,7 @@ void controlHeater(char soupType) {
 }
 
 void setup() {
+
   Serial.begin(9600);
   Serial1.begin(9600);
   stepperAdas.setSpeed(20); 
@@ -168,6 +181,7 @@ void setup() {
   digitalWrite(GazePin, HIGH);
   digitalWrite(valvePin, HIGH); 
   digitalWrite(temperatureSensor, HIGH); 
+  setRGBColor(0, 0, 0); 
   if (!rtc.begin()) {
     Serial.println("Couldn't find RTC. Check your connections.");
     while (1);
@@ -177,8 +191,7 @@ void setup() {
     Serial.println("RTC lost power, setting the default time!");
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Set to compile time
   }
-
-  Serial.println("Send time in format: YYYY/MM/DD HH:MM:SS");
+ 
 }
 
 void sendKeyPresses() {
@@ -219,27 +232,27 @@ void handleCharacters(char characters[]) {
     return;
   }
   if (characters[3]=='#'){
-    char soupType = message[0];
-    char peopleCount = message[1];
+    char soupType = characters[0];
+    char peopleCount = characters[1];
     int steps = calculateSteps(peopleCount);
     int stepsmotor32 = Calcnema23(peopleCount);
     if (soupType=='C') executeMotor(soupType, steps); 
     else executeMotor(soupType, stepsmotor32);
     Serial.write(message);
-    controlWaterPump(message[1]);
+    controlWaterPump(peopleCount);
     controlHeater(soupType);
   }        
 }
 void processInput(String input) {
   // Parse the input string
   if (sscanf(input.c_str(), "%d:%d", &hour, &minute) == 2) {
-    Serial.println("Time input parsed successfully.");
+    //Serial.println("Time input parsed successfully.");
   } else {
     Serial.println("Invalid format. Use: HH:MM");
   }
 }
 void loop() {
-  //Serial.println("HII");
+  
   char key = keypad.getKey();
   if (key) {
     storeKeyPress(key); 
@@ -252,21 +265,27 @@ void loop() {
   if (Serial1.available() > 0) {
     String input = Serial1.readStringUntil('\n'); // Read input as String
     input.trim(); // Remove leading/trailing whitespace
+    Serial.println(input);
     cnc=input.substring(0, 4);
     TimeBuffer = input.substring(4);
     cnc.toCharArray(message, sizeof(message));
+    strcpy(arduino1, message);
     processInput(TimeBuffer); // Process the time input
     sendKeyPresses(); 
     isHandled = false; // To avoid multiple calls
   }  
   DateTime now = rtc.now();
   if (!isHandled && TimeBuffer != "") {
+    Serial.println(now.hour());
+        Serial.println(now.minute());
       if (now.hour() == hour && now.minute() == minute) {
-        handleCharacters(message);
-        Serial.print("YEEES");
+        Serial.println(now.hour());
+        Serial.println(now.minute());
+        handleCharacters(arduino1);
         isHandled = true; 
       }
-    }
+  }
+  
 }
 
 

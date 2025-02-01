@@ -1,6 +1,6 @@
 // Define motor pins for Motor 1 (Up-Down Motor 1)
-const int MOTOR1_STEP_PIN = 13; // Step pin for Motor 1
-const int MOTOR1_DIR_PIN = 12;  // Direction pin for Motor 1
+const int MOTOR1_STEP_PIN = 23; // Step pin for Motor 1
+const int MOTOR1_DIR_PIN = 22;  // Direction pin for Motor 1
 const long int TOTAL_STEPS = 50000;  // Number of steps to move
 
 const int limitSwitchLeft = 3; // Pin for the limit switch

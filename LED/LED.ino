@@ -5,9 +5,9 @@
 
 
 // RGB LED Pins (PWM pins on Arduino Uno)
-int redPin = 31;
-int greenPin = 35;
-int bluePin = 33;
+int redPin = A10;
+int greenPin = A9;
+int bluePin = A8;
 
 // Function to set RGB LED color
 void setRGBColor(int redVal, int greenVal, int blueVal) {
@@ -29,6 +29,12 @@ void setup() {
 
 void loop() {
   // Cycle through Red, Green, and Blue colors with 1-second delay
-  setRGBColor(0, 50, 255);  // Red
+  setRGBColor(0, 0, 255);  // Red
+  delay(5000);
+  setRGBColor(0, 255, 0);  // Red
+  delay(5000);
+  setRGBColor(255, 0, 0);  // Red
+  delay(5000);
+
  
 }
